@@ -27,6 +27,19 @@ func getFlagUsage(f reflect.StructField) string {
 	return flagUsage
 }
 
+func getIndex(index []int) string {
+	data, _ := json.Marshal(index)
+	return string(data)
+}
+func getRealIndex(index string) []int {
+	realIndex := []int{}
+	err := json.Unmarshal([]byte(index), &realIndex)
+	if err != nil {
+		log.Printf("error getting index: %v", err)
+	}
+	return realIndex
+}
+
 func (fl *Flags) GetSettingName(f reflect.StructField) string {
 	flagName := strings.ToLower(f.Name)
 	for _, name := range []string{"arg", "json"} {
@@ -39,28 +52,31 @@ func (fl *Flags) GetSettingName(f reflect.StructField) string {
 	return flagName
 }
 
-func (fl *Flags) Process(name string, field reflect.StructField, vars reflect.Value) error {
-	flagUsage := getFlagUsage(field)
+func (fl *Flags) Process(params *ProcessorParams) error {
+	flagUsage := getFlagUsage(params.field)
+	flagIndex := getIndex(params.index)
+
+	vars := params.vals
 	switch vars.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
-		fl.args[field.Name] = fl.flagSet.Int(name, int(vars.Int()), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.Int(params.name, int(vars.Int()), flagUsage)
 	case reflect.Int64:
-		fl.args[field.Name] = fl.flagSet.Int64(name, vars.Int(), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.Int64(params.name, vars.Int(), flagUsage)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
-		fl.args[field.Name] = fl.flagSet.Uint(name, uint(vars.Uint()), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.Uint(params.name, uint(vars.Uint()), flagUsage)
 	case reflect.Uint64:
-		fl.args[field.Name] = fl.flagSet.Uint64(name, vars.Uint(), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.Uint64(params.name, vars.Uint(), flagUsage)
 	case reflect.Float64, reflect.Float32:
-		fl.args[field.Name] = fl.flagSet.Float64(name, vars.Float(), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.Float64(params.name, vars.Float(), flagUsage)
 	case reflect.Bool:
-		fl.args[field.Name] = fl.flagSet.Bool(name, vars.Bool(), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.Bool(params.name, vars.Bool(), flagUsage)
 	case reflect.String:
-		fl.args[field.Name] = fl.flagSet.String(name, vars.String(), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.String(params.name, vars.String(), flagUsage)
 	case reflect.Array, reflect.Slice, reflect.Map:
 		out, _ := json.Marshal(vars.Interface())
-		fl.args[field.Name] = fl.flagSet.String(name, string(out), flagUsage)
+		fl.args[flagIndex] = fl.flagSet.String(params.name, string(out), flagUsage)
 	default:
-		return fmt.Errorf("%w unknown type [%s]: %v", ErrInvalidArgs, name, vars.Kind())
+		return fmt.Errorf("%w unknown type [%s]: %v", ErrInvalidArgs, params.name, vars.Kind())
 	}
 
 	return nil
@@ -70,7 +86,7 @@ func (fl *Flags) Load(vars interface{}) error {
 	fl.flagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fl.args = make(map[string]interface{})
 
-	err := ProcessVars("", reflect.StructField{}, fl, vars)
+	err := ProcessVars(ProcessorParams{}, fl, vars)
 	if err != nil {
 		return err
 	}
@@ -89,14 +105,10 @@ func (fl *Flags) Load(vars interface{}) error {
 	if vals.Kind() == reflect.Ptr {
 		vals = vals.Elem()
 	}
-	for i := 0; i < vals.NumField(); i++ {
-		fieldVal := vals.Field(i)
-		f := vals.Type().Field(i)
+	for index, data := range fl.args {
+		realIndex := getRealIndex(index)
+		fieldVal := vals.FieldByIndex(realIndex)
 
-		data, ok := fl.args[f.Name]
-		if !ok {
-			continue
-		}
 		switch fieldVal.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
 			fieldVal.SetInt(int64(*data.(*int)))
@@ -119,7 +131,7 @@ func (fl *Flags) Load(vars interface{}) error {
 			fieldVal.Set(val)
 
 		case reflect.Array, reflect.Slice, reflect.Map:
-			data, ok := fl.args[f.Name].(*string)
+			data, ok := data.(*string)
 			if !ok {
 				break
 			}

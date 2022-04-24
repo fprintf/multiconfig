@@ -11,7 +11,14 @@ type Loader interface {
 }
 
 type Processor interface {
-	Process(string, reflect.StructField, reflect.Value) error
+	Process(*ProcessorParams) error
+}
+
+type ProcessorParams struct {
+	name  string
+	field reflect.StructField
+	index []int
+	vals  reflect.Value
 }
 
 var (
@@ -42,7 +49,7 @@ func getSettingName(f reflect.StructField) string {
 	return name
 }
 
-func ProcessVars(name string, field reflect.StructField, p Processor, vars interface{}) error {
+func ProcessVars(params ProcessorParams, p Processor, vars interface{}) error {
 	vals, ok := vars.(reflect.Value)
 	if !ok {
 		vals = reflect.ValueOf(vars)
@@ -73,12 +80,15 @@ func ProcessVars(name string, field reflect.StructField, p Processor, vars inter
 				continue
 			}
 
-			name := name
-			if name != "" {
-				name += "_"
+			params := params
+			if params.name != "" {
+				params.name += "_"
 			}
-			name += setting
-			err := ProcessVars(name, f, p, fieldVal)
+			params.name += setting
+			params.field = f
+			params.index = append(params.index, f.Index...)
+			params.vals = fieldVal
+			err := ProcessVars(params, p, fieldVal)
 			if err != nil {
 				return err
 			}
@@ -90,12 +100,12 @@ func ProcessVars(name string, field reflect.StructField, p Processor, vars inter
 		reflect.Bool,
 		reflect.String,
 		reflect.Array, reflect.Slice, reflect.Map:
-		err := p.Process(name, field, vals)
+		err := p.Process(&params)
 		if err != nil {
 			return err
 		}
 	default:
-		return fmt.Errorf("%w unknown type [%s]: %#v", ErrInvalidArgs, name, vals.Kind())
+		return fmt.Errorf("%w unknown type [%s]: %#v", ErrInvalidArgs, params.name, vals.Kind())
 	}
 
 	return nil

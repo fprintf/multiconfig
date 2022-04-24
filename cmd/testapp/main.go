@@ -1,12 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/fprintf/multiconfig"
 )
 
+type Embedded struct {
+	Address string
+	Age     int
+}
+
 type TestConfig struct {
+	Embedded
 	ServerName    string `json:"server_name" env:"TEST_SERVER_NAME"`
 	Port          int    `json:"port"`
 	Pin           int8   `json:"pin"`
@@ -44,5 +51,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("%#v", cfg)
+	out, _ := json.MarshalIndent(cfg, "", "    ")
+	log.Println(string(out))
 }
