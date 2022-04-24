@@ -1,10 +1,10 @@
 package multiconfig
 
-type MultiLoader struct {
+type Multi struct {
 	Loaders []Loader
 }
 
-func (mc *MultiLoader) Load(vars interface{}) error {
+func (mc *Multi) Load(vars interface{}) error {
 	for _, loader := range mc.Loaders {
 		err := loader.Load(vars)
 		if err != nil {
@@ -15,6 +15,6 @@ func (mc *MultiLoader) Load(vars interface{}) error {
 	return nil
 }
 
-func NewMultiLoader(loaders ...Loader) *MultiLoader {
-	return &MultiLoader{Loaders: loaders}
+func NewMulti(loaders ...Loader) *Multi {
+	return &Multi{Loaders: loaders}
 }

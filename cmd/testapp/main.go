@@ -41,7 +41,7 @@ func main() {
 	}
 
 	// Load config files in order of precedence
-	loader := multiconfig.NewMultiLoader(
+	loader := multiconfig.NewMulti(
 		multiconfig.NewEnv(""),
 		multiconfig.NewFlags(),
 	)
