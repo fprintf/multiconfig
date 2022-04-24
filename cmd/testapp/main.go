@@ -10,6 +10,7 @@ type TestConfig struct {
 	ServerName    string `json:"server_name" env:"TEST_SERVER_NAME"`
 	Port          int    `json:"port"`
 	Pin           int8   `json:"pin"`
+	UnPin         uint8  `json:"upin"`
 	ListenAddr    string `json:"listen_addr" arg:"bind" usage:"the address to bind our listener to"`
 	RootDir       string `json:"root_dir"`
 	User          string `json:"user"`
@@ -19,7 +20,6 @@ type TestConfig struct {
 		Title   string
 		Counter int
 	}
-	// TODO test this once we get array support working
 	Names   []string       `json:"names" usage:"specify a list of names separate by comma or repeated flag calls"`
 	Friends map[string]int `json:"friends" usage:"a map of friends name with an integer representing how much I like them"`
 }
