@@ -17,7 +17,7 @@ Easy to use automatic config structs. Easily load a config for your software by 
 	
 	import (
 	    "github.com/fprintf/multiconfig"
-		"fmt"
+	    "fmt"
 	)
 	
 	type MySettings struct {
@@ -30,7 +30,7 @@ Easy to use automatic config structs. Easily load a config for your software by 
 	func main() {
 		loader := multiconfig.NewMulti(
 			multiconfig.NewEnv(""),
-			multiconfig.NewFlag(),
+			multiconfig.NewFlags(),
 		)
 	
 		settings := &MySettings{}
@@ -41,3 +41,5 @@ Easy to use automatic config structs. Easily load a config for your software by 
 	
 		fmt.Printf("Loaded config: %#v", settings)
 	}
+
+Also see cmd/testapp for a basic example usage
