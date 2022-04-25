@@ -30,6 +30,7 @@ type TestConfig struct {
 	Names   []string       `json:"names" usage:"specify a list of names separate by comma or repeated flag calls"`
 	Friends map[string]int `json:"friends" usage:"a map of friends name with an integer representing how much I like them"`
 	File    string         `json:"file" argtype:"positional"`
+	File2   string         `json:"file2" argtype:"positional"`
 	Args    []string       `json:"args" argtype:"positional"`
 }
 
