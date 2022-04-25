@@ -72,7 +72,7 @@ func ProcessVars(params ProcessorParams, p Processor, vars interface{}) error {
 			}
 
 			// skip settings that are "-" or dont have a usable name set
-			if setting == "" {
+			if setting == "" || setting == "-" {
 				continue
 			}
 			// skip unexported fields (they have PkgPath set)

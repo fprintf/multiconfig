@@ -7,16 +7,21 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 )
 
 type Flags struct {
 	flagSet *flag.FlagSet
 	args    map[string]interface{}
+	OsArgs  []string
 }
 
 func NewFlags() *Flags {
-	return &Flags{}
+	return &Flags{OsArgs: os.Args[1:]}
+}
+func NewFlagsWithArgs(args []string) *Flags {
+	return &Flags{OsArgs: args}
 }
 
 func getFlagUsage(f reflect.StructField) string {
@@ -71,8 +76,16 @@ func (fl *Flags) Process(params *ProcessorParams) error {
 	case reflect.Bool:
 		fl.args[flagIndex] = fl.flagSet.Bool(params.name, vars.Bool(), flagUsage)
 	case reflect.String:
+		if _, ok := vars.Interface().(string); ok && params.field.Tag.Get("argtype") == "positional" {
+			fl.args[flagIndex] = ""
+			break
+		}
 		fl.args[flagIndex] = fl.flagSet.String(params.name, vars.String(), flagUsage)
 	case reflect.Array, reflect.Slice, reflect.Map:
+		if _, ok := vars.Interface().([]string); ok && params.field.Tag.Get("argtype") == "positional" {
+			fl.args[flagIndex] = []string{}
+			break
+		}
 		out, _ := json.Marshal(vars.Interface())
 		fl.args[flagIndex] = fl.flagSet.String(params.name, string(out), flagUsage)
 	default:
@@ -91,23 +104,30 @@ func (fl *Flags) Load(vars interface{}) error {
 		return err
 	}
 	// Parse() will ignore parameters unless we skip the program name with os.Args[1:]
-	err = fl.flagSet.Parse(os.Args[1:])
+	err = fl.flagSet.Parse(fl.OsArgs)
 	if err != nil {
 		return fmt.Errorf("flag parse error: %v", err)
 	}
-	// TODO decide if we should fail on additional args remaining after parse or not (prob should make it optional)
-	for i, arg := range fl.flagSet.Args() {
-		log.Printf("remaining arg: %-02d %s", i, arg)
-	}
 
+	positional := fl.flagSet.Args()
 	// Set values after getting them from the flag results
 	vals := reflect.ValueOf(vars)
 	if vals.Kind() == reflect.Ptr {
 		vals = vals.Elem()
 	}
-	for index, data := range fl.args {
+
+	// Sort our key list so we add positional arguments in order deterministicly
+	sorted := make([]string, 0, len(fl.args))
+	for key := range fl.args {
+		sorted = append(sorted, key)
+	}
+	sort.Strings(sorted)
+
+	for _, index := range sorted {
+		data := fl.args[index]
 		realIndex := getRealIndex(index)
 		fieldVal := vals.FieldByIndex(realIndex)
+		argType := vals.Type().FieldByIndex(realIndex).Tag.Get("argtype")
 
 		switch fieldVal.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
@@ -124,6 +144,13 @@ func (fl *Flags) Load(vars interface{}) error {
 			fieldVal.SetFloat(*data.(*float64))
 
 		case reflect.Bool, reflect.String:
+			// Store positional arg and remove it from positional arg list
+			if fieldVal.Kind() == reflect.String && argType == "positional" && len(positional) > 0 {
+				val := positional[0]
+				positional = positional[1:]
+				fieldVal.Set(reflect.ValueOf(val))
+				break
+			}
 			val := reflect.ValueOf(data)
 			if val.Kind() == reflect.Ptr {
 				val = val.Elem()
@@ -131,6 +158,12 @@ func (fl *Flags) Load(vars interface{}) error {
 			fieldVal.Set(val)
 
 		case reflect.Array, reflect.Slice, reflect.Map:
+			// Store remaining positional args and remove it from positional arg list
+			if _, ok := fieldVal.Interface().([]string); ok && argType == "positional" {
+				fieldVal.Set(reflect.ValueOf(positional))
+				positional = []string{}
+				break
+			}
 			data, ok := data.(*string)
 			if !ok {
 				break
