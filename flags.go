@@ -18,6 +18,7 @@ type Flags struct {
 }
 
 func NewFlags() *Flags {
+	// flag.Parse() will ignore parameters unless we skip the program name with os.Args[1:]
 	return &Flags{OsArgs: os.Args[1:]}
 }
 func NewFlagsWithArgs(args []string) *Flags {
@@ -36,6 +37,11 @@ func getIndex(index []int) string {
 	data, _ := json.Marshal(index)
 	return string(data)
 }
+
+// getRealIndex takes a json array of field positions each element of the array represents
+// a single level of depth into the struct, reflect.Index() gives you only one level depth
+// so we need to get the real depth by combinging the reflect.Index() and keeping track as we traverse
+// down the struct heirarchy
 func getRealIndex(index string) []int {
 	realIndex := []int{}
 	err := json.Unmarshal([]byte(index), &realIndex)
