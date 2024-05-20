@@ -76,7 +76,7 @@ func ProcessVars(params ProcessorParams, p Processor, vars interface{}) error {
 				continue
 			}
 			// skip unexported fields (they have PkgPath set)
-			if len(f.PkgPath) != 0 {
+			if !f.IsExported() {
 				continue
 			}
 
