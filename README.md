@@ -41,38 +41,40 @@ you want to use when creating it before passing it to the *loader*s.
 
 NewMulti() is the ideal way to use the library. It allows you to load multiple types of config in defined precedence order.
 
-	package someapp
-	
-	import (
-	    "github.com/fprintf/multiconfig"
-	    "fmt"
+```golang
+package someapp
+
+import (
+    "github.com/fprintf/multiconfig"
+    "fmt"
+)
+
+type MySettings struct {
+	// Specify different setting names for json, env and flags also specify usage string
+	ServerName string `json:"server_name" env:"SERVER_NAME" arg:"servername" usage:"specify the name of the webserver"`
+	// Env/Flag loaders will use 'json' tag if they have no name specific one
+	Port int `json:"port" usage:"port for webserver"`
+}
+
+func main() {
+	loader := multiconfig.NewMulti(
+		multiconfig.NewEnv(""),
+		multiconfig.NewFlags(),
 	)
-	
-	type MySettings struct {
-		// Specify different setting names for json, env and flags also specify usage string
-		ServerName string `json:"server_name" env:"SERVER_NAME" arg:"servername" usage:"specify the name of the webserver"`
-		// Env/Flag loaders will use 'json' tag if they have no name specific one
-		Port int `json:"port" usage:"port for webserver"`
+
+	// You can set default values by preloading the config instance before passing to `loader.Load()`
+	settings := &MySettings{
+		ServerName: "example.com",
+		Port: 5000,
 	}
-	
-	func main() {
-		loader := multiconfig.NewMulti(
-			multiconfig.NewEnv(""),
-			multiconfig.NewFlags(),
-		)
-	
-		// You can set default values by preloading the config instance before passing to `loader.Load()`
-		settings := &MySettings{
-			ServerName: "example.com",
-			Port: 5000,
-		}
-		err := loader.Load(settings)
-		if err != nil {
-			panic(fmt.Sprintf("failed to load config: %v", err))
-		}
-	
-		fmt.Printf("Loaded config: %#v", settings)
+	err := loader.Load(settings)
+	if err != nil {
+		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
+
+	fmt.Printf("Loaded config: %#v", settings)
+}
+```
 
 ### Example using NewEnv(prefix) on its own
 
@@ -80,58 +82,71 @@ NewEnv() loads config data into the struct from the environment variables passed
 This generally means individual env var for each field in the struct. Specifying a prefix makes it easy
 to remove repeated parts from your struct tag definitions.
 
-	# config env vars
-	MYAPP_SERVER_NAME="paradise-island.to"
-	MYAPP_port=5000
+```
+# config env vars
+MYAPP_SERVER_NAME="paradise-island.to"
+MYAPP_port=5000
+```
 
-	loader := multiconfig.NewEnv("MYAPP_")
+```golang
+loader := multiconfig.NewEnv("MYAPP_")
 
-	settings := &MySettings{}
-	err := loader.Load(settings)
-	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
-	}
+settings := &MySettings{}
+err := loader.Load(settings)
+if err != nil {
+	panic(fmt.Sprintf("failed to load config: %v", err))
+}
 
-	fmt.Printf("Loaded config: %#v", settings)
+fmt.Printf("Loaded config: %#v", settings)
+```
 
 ### Example using NewJsonFile(filepath)
 
 NewJsonFile() will load the configuration data from a json file.
 
-	# config.json
-	{
-		"server_name": "webserver.com",
-		"port": 5000
-	}
+```
+# config.json
+{
+	"server_name": "webserver.com",
+	"port": 5000
+}
+```
 
-	# main.go
-	loader := multiconfig.NewJsonFile("config.json")
+```golang
+loader := multiconfig.NewJsonFile("config.json")
 
-	settings := &MySettings{}
-	err := loader.Load(settings)
-	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
-	}
+settings := &MySettings{}
+err := loader.Load(settings)
+if err != nil {
+	panic(fmt.Sprintf("failed to load config: %v", err))
+}
 
-	fmt.Printf("Loaded config: %#v", settings)
+fmt.Printf("Loaded config: %#v", settings)
+```
 
 ### Example using NewJsonDirs(dirpaths)
 
 NewJsonDirs() will recursively search the list of directories, in order. Each file ending in .json
 will be loaded into the given config struct. The last file found will have the most precedence on conflicting setting names.
 
->NOTE: Settings with the same name in each file will be overwritten. Settings with different names will be preserved.
+> [!NOTE]
+> Settings with the same name in each file will be overwritten. Settings with different names will be preserved.
 
-	loader := multiconfig.NewJsonDirs([]string{
-		"/home/user/.config/myapp",
-		"/etc/myapp/config"
-	})
+```golang
+loader := multiconfig.NewJsonDirs([]string{
+	"/home/user/.config/myapp",
+	"/etc/myapp/config"
+})
 
-	settings := &MySettings{}
-	err := loader.Load(settings)
-	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
-	}
+settings := &MySettings{}
+err := loader.Load(settings)
+if err != nil {
+	panic(fmt.Sprintf("failed to load config: %v", err))
+}
 
-	fmt.Printf("Loaded config: %#v", settings)
-Also see cmd/testapp for a basic example usage
+fmt.Printf("Loaded config: %#v", settings)
+```
+
+# Example Commands
+
+Check out the example commands `jwt` and `testapp` in the `cmd` directories for more ideas!
